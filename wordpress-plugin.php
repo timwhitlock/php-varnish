@@ -222,6 +222,8 @@ function wpv_edit_comment_action( $commentid ){
     }
     // purge post that comment is on
     wpv_edit_post_action( $post_id );
+    global $wpv_to_purge;
+    $wpv_to_purge['^/comments/feed'] = true;
 }
 
 
