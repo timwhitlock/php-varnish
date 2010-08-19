@@ -1,0 +1,2 @@
+# Wordpress plugin for Varnish
+

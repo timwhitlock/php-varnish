@@ -158,7 +158,7 @@ class VarnishAdminSocket {
      */
     public function close(){
         is_resource($this->fp) and fclose($this->fp);
-        unset($this->fp);
+        $this->fp = null;
     }
     
     
@@ -168,7 +168,12 @@ class VarnishAdminSocket {
      * @return void
      */
     public function quit(){
-        $this->command('quit', $code, 500 );
+        try {
+            $this->command('quit', $code, 500 );
+        }
+        catch( Exception $Ex ){
+            // slient fail - force close of socket
+        }
         $this->close();
     }
     
