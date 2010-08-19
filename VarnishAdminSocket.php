@@ -1,12 +1,15 @@
 <?php
 /**
- * Varnish admin socket for executing varnishadm commands.
+ * Varnish admin socket for executing varnishadm CLI commands.
+ * @see http://varnish-cache.org/wiki/CLI
  * @author Tim Whitlock http://twitter.com/timwhitlock
  * 
+ * @todo authentication
+ * @todo add all short cut methods to commands listed below
+ * @todo sanitise command parameters, such as regexp
  * 
  * Tested with varnish-2.1.3 SVN 5049:5055; 
- * Available commands as follows:
- * 
+ * CLI commands available as follows:
 	help [command]
 	ping [timestamp]
 	auth response
@@ -113,7 +116,8 @@ class VarnishAdminSocket {
 		$this->write("\n");
 		$response = $this->read( $code );
 		if( $code !== $ok ){
-			throw new Exception( sprintf("%s command responded %d:\n`%s'", $cmd, $code, $response) );
+			$response = implode("\n > ", explode("\n",trim($response) ) );
+			throw new Exception( sprintf("%s\n - Command responded %d:\n > %s", $cmd, $code, $response) );
 		}
 		return $response;
 	}
@@ -196,11 +200,59 @@ class VarnishAdminSocket {
 	
 	/**
 	 * Shortcut to purge.list function
+	 * @todo should we parse the reponse lines?
 	 * @return array
 	 */
 	public function purge_list(){
 		$response = $this->command( 'purge.list', $code );
 		return explode( "\n",trim($response) );
+	}
+	
+	
+	
+	/**
+	 * Test varnish child status
+	 * @return bool whether child is alive
+	 */
+	public function status(){
+		try {
+			$response = $this->command( 'status', $code );
+			if( ! preg_match('/Child in state (\w+)/', $response, $r ) ) {
+				return false;
+			}
+			return $r[1] === 'running';
+		}
+		catch( Exception $Ex ){
+			return false;
+		}
+	}
+	
+	
+	
+	/**
+	 * @return bool
+	 */
+	public function stop(){
+		if( ! $this->status() ){
+			trigger_error(sprintf('varnish host already stopped on %s:%s', $this->host, $this->port), E_USER_NOTICE);
+			return true;
+		}
+		$this->command( 'stop', $code );
+		return true;
+	}	
+	
+	
+	
+	/**
+	 * @return bool
+	 */
+	public function start(){
+		if( $this->status() ){
+			trigger_error(sprintf('varnish host already started on %s:%s', $this->host, $this->port), E_USER_NOTICE);
+			return true;
+		}
+		$this->command( 'start', $code );
+		return true;
 	}
 	
 	
