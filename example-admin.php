@@ -17,8 +17,8 @@ require 'VarnishAdminSocket.php';
 
 
 // open socket connection with your known host and IP
-$Sock = new VarnishAdminSocket( 'localhost', 6082 );
-$Sock->connect();
+$Sock = new VarnishAdminSocket( 'localhost', 8080 );
+$Sock->connect(1);
 
 
 // Check that child is running. If varnish wasn't running at all, connect would have timed out
@@ -28,12 +28,14 @@ var_dump( $running );
 
 // stop it, and check again
 $Sock->stop();
+sleep(1);
 $running = $Sock->status();
 var_dump( $running );
 
 
 // start it up again, and check
 $Sock->start();
+sleep(1);
 $running = $Sock->status();
 var_dump( $running );
 
