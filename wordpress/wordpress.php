@@ -10,13 +10,68 @@ Description: A plugin enabling Wordpress to purge Varnish caches via the varnish
 
 
 
+/** admin menu hook */
+function wpv_admin_menu() {
+    add_options_page( 'Varnish Admin Options', 'Varnish Admin', 'manage_options', 'wpv', 'wpv_admin_page');
+}
+
+
+
+/** admin page hook */
+function wpv_admin_page(){
+    if ( ! current_user_can('manage_options') ){
+        wp_die( __('You do not have sufficient permissions to access this page.') );
+    }
+    if( isset($_POST['wpv']) ){
+        update_option( 'wpv_clients', $_POST['wpv_clients'] );
+    }
+    $clients = get_option('wpv_clients') or $clients = '127.0.0.1:6082';
+    ?>
+    <div class="wrap">
+    	<h2>Configure one or more Varnish clients</h2>
+    	<form method="post" action="<?php echo $_SERVER['REQUEST_URI']; ?>" enctype="application/x-www-form-urlencoded" id="wpvadmform">
+    		<fieldset>
+    			<label>Specify clients one per line, in format <em>host:port</em></label>
+	    		<textarea name="wpv_clients" cols="30" rows="5" wrap="virtual"><?php echo esc_html($clients)?></textarea>
+    		</fieldset>
+    		<input type="submit" value="Save" name="wpv" />
+    	</form>
+    </div>
+    <?php
+    // end of admin screen
+}
+
+
+
+
+/**
+ * parse client options saved as raw text
+ */
+function wpv_get_clients(){
+    $raw = get_option('wpv_clients');
+    if( ! $raw ){
+        return;
+    }
+    $clients = array();
+    foreach( preg_split('/[^[a-z]\d\.\:\-]+/i', trim($raw), -1, PREG_SPLIT_NO_EMPTY ) as $line ){
+        $clients[] = explode(':', $line, 2 );
+    }
+    return $clients;
+}
+
+
+
+
 /**
  * Send multiple purge commands to all varnishadm sockets
  */
 function wpv_purge_urls( array $urls ){
     // @todo get server params from config
-    $hostpattern = 'example\\\\.com$';
-    $servers[] = array( '127.0.0.1', '6082' ); 
+    $hostpattern = get_option('wpv_host_pattern');
+    $clients[] = wpv_get_clients();
+    if( ! $clients ){
+        return;
+    }
     // ensure admin class is available
     if( ! class_exists('VarnishAdminSocket') ){
         include dirname(__FILE__).'/../VarnishAdminSocket.php';
@@ -25,9 +80,9 @@ function wpv_purge_urls( array $urls ){
         }
     }
     // iterate over all available sockets
-    foreach( $servers as $server ){
+    foreach( $clients as $client ){
         try {
-            list( $host, $port ) = $server;
+            list( $host, $port ) = $client;
             $Sock = new VarnishAdminSocket( $host, $port );
             $Sock->connect();
             if( ! $Sock->status() ){
@@ -141,6 +196,11 @@ add_action( 'deleted_comment',   'wpv_edit_comment_action', 99 );
 // yes, I know globals are nasty, but this is Wordpress we're dealing with here.
 $GLOBALS['wpv_to_purge'] = array();
 add_action( 'shutdown', 'wpv_purge_on_shutdown', 0 );
+
+
+// register admin pages
+add_action('admin_menu', 'wpv_admin_menu');
+
 
 
 
