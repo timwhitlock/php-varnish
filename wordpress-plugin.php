@@ -1,7 +1,7 @@
 <?php
 /**
 Plugin Name: WordPress Varnish Admin
-Plugin URI: http://github.com/timwhitlock/php-varnish/tree/master/php-varnish/wordpress
+Plugin URI: http://github.com/timwhitlock/php-varnish
 Description: A plugin enabling Wordpress to purge Varnish caches via the varnishadm program
 Version: 0.1
 Author: Tim Whitlock
@@ -177,7 +177,7 @@ function wpv_edit_post_action( $postid ){
     global $wpv_to_purge;
     $uri = parse_url( get_permalink($postid), PHP_URL_PATH );
     if( ! $uri ){
-        trigger_error('Failed to get permalink path from post with id '.var_export($postid,1), E_USER_WARNING);
+        trigger_error('Failed to get permalink path from post with id '.var_export($postid,1), E_USER_NOTICE);
         return;
     }
     // common, home page and all feeds
@@ -217,7 +217,7 @@ function wpv_edit_comment_action( $commentid ){
     $comment = get_comment($commentid) and
     $postid = $comment->comment_post_ID;
     if( empty($postid) ){
-        trigger_error('Failed to get post from comment with id '.var_export($commentid), E_USER_WARNING);
+        trigger_error('Failed to get post from comment with id '.var_export($commentid), E_USER_NOTICE);
         return;
     }
     // purge post that comment is on
