@@ -1,21 +1,26 @@
 
 backend origin {
-	.host = "localhost";
-	.port = "8080";
+    .host = "localhost";
+    .port = "8080";
 }
 
 
 sub vcl_recv {
 	# only using one backend
 	set req.backend = origin;
-		
+	
 	# set standard proxied ip header for getting original remote address
 	set req.http.X-Forwarded-For = client.ip;
 	
 	# logged in users must always pass
 	if( req.url ~ "^/wp-(login|admin)" || req.http.Cookie ~ "wordpress_logged_in_" ){
-		return (pass);
+	    return (pass);
 	}
+       
+        # don't cache search results
+        if( req.url ~ "\?s=" ){
+            return (pass);
+        }
 
 	# always pass through posted requests and those with basic auth
 	if ( req.request == "POST" || req.http.Authorization ) {
@@ -54,6 +59,11 @@ sub vcl_fetch {
 	if ( beresp.status != 200 ) {
 		return (pass);
 	}
+
+        # don't cache search results
+        if( req.url ~ "\?s=" ){
+            return (pass);
+        }
 	
 	# else ok to cache the response
 	set beresp.ttl = 24h;
