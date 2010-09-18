@@ -180,15 +180,15 @@ function wpv_edit_post_action( $postid ){
         trigger_error('Failed to get permalink path from post with id '.var_export($postid,1), E_USER_NOTICE);
         return;
     }
-    // common, home page and all feeds
-    $wpv_to_purge['^/$'] = true;
+    // always purge all feeds
     $wpv_to_purge['^/feed'] = true;
-    // the actual post page, and any extentions thereof
-    $wpv_to_purge['^'.$uri] = true;
-    // archive page, if permalink starts with a date
-    // @todo support for posts that don't have permalink beginning with date
-    if( preg_match( '!^/\d+/\d+/\d+/!', $uri, $r ) ){
-        $wpv_to_purge['^'.$r[0].'$'] = true;
+    // the actual post page, and any extensions thereof
+    $wpv_to_purge['^'.$uri.'?'] = true;
+    // to purge all archives and index pages we will purge all sub paths absolutely
+    $bits = preg_split( '!/!', $uri, -1, PREG_SPLIT_NO_EMPTY );
+    while( array_pop($bits) ){
+        $path = '^/'.implode('/',$bits).'/?$';
+        $wpv_to_purge[$path] = true;
     }
     // purge pop up comments?
     // '\\?comments_popup='.$postid; // <- untested
@@ -199,7 +199,7 @@ function wpv_edit_post_action( $postid ){
             foreach( $terms as $term ){
                 $uri = get_term_link( $term, $t) and
                 $uri = parse_url( $uri, PHP_URL_PATH ) and
-                $wpv_to_purge['^'.$uri] = true;
+                $wpv_to_purge['^'.$uri.'?'] = true;
             }
         }
     }

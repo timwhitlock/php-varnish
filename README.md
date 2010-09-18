@@ -12,7 +12,7 @@ Common tasks would include checking the health of caches and purging when site c
 
 ## Wordpress plug-in
 
-This package includes a Wordpress plug-in. See wordpress/README.md
+This package includes a Wordpress plug-in. See wordpress-plugin/README.md
 
 
 ## Todo
