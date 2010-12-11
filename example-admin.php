@@ -16,28 +16,41 @@ error_reporting( E_ALL | E_STRICT );
 require 'VarnishAdminSocket.php';
 
 
-// open socket connection with your known host and IP
-$Sock = new VarnishAdminSocket( 'localhost', 8080 );
-$Sock->connect(1);
-
+// open socket connection with your known host and port
+$Sock = new VarnishAdminSocket( 'localhost', 6082 );
+// secret text from file probably has a trailing newline
+$Sock->set_auth("extremelysecrettext\n");
+// connect to socket with a timeout parameter
+echo 'Connecting ... ';
+try {
+    $Sock->connect(1);
+    echo "OK\n";
+}
+catch( Exception $Ex ){
+    echo '**FAIL**: ', $Ex->getMessage(), "\n";
+    exit(0);
+}
 
 // Check that child is running. If varnish wasn't running at all, connect would have timed out
 $running = $Sock->status();
-var_dump( $running );
+echo 'Running: ', $running ? 'Yep' : 'Nope', "\n";
 
 
 // stop it, and check again
-$Sock->stop();
-sleep(1);
-$running = $Sock->status();
-var_dump( $running );
-
+if( $running ){
+    echo "Stopping ... \n";
+    $Sock->stop();
+    sleep(1);
+    $running = $Sock->status();
+    echo 'Running: ', $running ? 'Yep' : 'Nope', "\n";
+}
 
 // start it up again, and check
+echo "Starting ... \n";
 $Sock->start();
 sleep(1);
 $running = $Sock->status();
-var_dump( $running );
+echo 'Running: ', $running ? 'Yep' : 'Nope', "\n";
 
 
 // purge your home page
@@ -49,6 +62,7 @@ $Sock->purge('req.url ~ ^/$ && req.http.host ~ example\\\\.com$');
 
 
 // show purge list
+echo "Getting purge list ...\n";
 $list = $Sock->purge_list();
 var_dump( $list );
 

@@ -17,7 +17,6 @@ This package includes a Wordpress plug-in. See wordpress-plugin/README.md
 
 ## Todo
 
-* varnishadm authentication
 * Add short cut methods for all admin commands
 * Sanitise admin command parameters, such as regexp
 * HTTP tools

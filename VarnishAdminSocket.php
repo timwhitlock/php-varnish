@@ -56,15 +56,27 @@ class VarnishAdminSocket {
      */
     private $port;
     
+    /**
+     * @param string secret to use in authentication challenge
+     */
+    private $secret;
+    
     
     /**
      * Constructor
      */
-    function __construct( $host = '127.0.0.1', $port = 6082 ){
+    public function __construct( $host = '127.0.0.1', $port = 6082 ){
         $this->host = $host;
         $this->port = $port;
     }
-
+    
+    
+    /**
+     * Set authentication secret
+     */
+    public function set_auth( $secret ){
+        $this->secret = $secret;
+    }
     
     
     /**
@@ -72,7 +84,7 @@ class VarnishAdminSocket {
      * @param int optional timeout in seconds, defaults to 5; used for connect and reads
      * @return string the banner, in case you're interested
      */
-    function connect( $timeout = 5 ){
+    public function connect( $timeout = 5 ){
         $this->fp = fsockopen( $this->host, $this->port, $errno, $errstr, $timeout );
         if( ! is_resource( $this->fp ) ){
             // error would have been raised already by fsockopen
@@ -81,8 +93,21 @@ class VarnishAdminSocket {
         // set socket options
         stream_set_blocking( $this->fp, 1 );
         stream_set_timeout( $this->fp, $timeout );
-        // connecting should give us the varnishadm banner with a 200 code
+        // connecting should give us the varnishadm banner with a 200 code, or 107 for auth challenge
         $banner = $this->read( $code );
+        if( $code === 107 ){
+            if( ! $this->secret ){
+                throw new Exception('Authentication required; see VarnishAdminSocket::set_auth');
+            }
+            try {
+                $challenge = substr( $banner, 0, 32 );
+                $response = hash('sha256', $challenge."\n".$this->secret.$challenge."\n");
+                $banner = $this->command('auth '.$response, $code, 200 );
+            }
+            catch( Exception $Ex ){
+                throw new Exception('Authentication failed');
+            }
+        }
         if( $code !== 200 ){
             throw new Exception( sprintf('Bad response from varnishadm on %s:%s', $this->host, $this->port));
         }
@@ -117,7 +142,7 @@ class VarnishAdminSocket {
         $response = $this->read( $code );
         if( $code !== $ok ){
             $response = implode("\n > ", explode("\n",trim($response) ) );
-            throw new Exception( sprintf("%s command responded %d:\n > %s", $cmd, $code, $response) );
+            throw new Exception( sprintf("%s command responded %d:\n > %s", $cmd, $code, $response), $code );
         }
         return $response;
     }

@@ -105,6 +105,24 @@ function wpv_get_clients( $raw = null ){
 }
 
 
+/**
+ * parse auth secret options saved as urlencoded text
+ */
+function wpv_get_secrets( $raw = null ){
+    if( is_null($raw) ){
+        $raw = get_option('wpv_secrets');
+    }
+    if( ! $raw ){
+        return;
+    }
+    $secrets = array();
+    foreach( preg_split('/[^a-z0-9_\-\.~\%]+/i', $raw ) as $line ){
+        $secrets[] = rawurldecode($line);
+    }
+    return $secrets;
+}
+
+
 
 /**
  * instantiate an admin socket
@@ -127,15 +145,19 @@ function wpv_admin_socket( $host, $post ){
  */
 function wpv_purge_urls( array $urls ){
     $hostpattern = get_option('wpv_host_pattern','');
+    $secrets = wpv_get_secrets();
     $clients = wpv_get_clients();
     if( ! $clients ){
         return;
     }
     // iterate over all available sockets
-    foreach( $clients as $client ){
+    foreach( $clients as $i => $client ){
         try {
             list( $host, $port ) = $client;
             $Sock = wpv_admin_socket( $host, $port );
+            if( ! empty($secrets[$i]) ){
+                $Sock->set_auth( $secrets[$i] );
+            }
             $Sock->connect();
             if( ! $Sock->status() ){
                 throw new Exception( sprintf('Varnish server stopped on host %s:%d', $host, $port ) );
@@ -169,7 +191,7 @@ function wpv_purge_urls( array $urls ){
 /**
  * Collect URLs to purge relating to a post
  */
-function wpv_edit_post_action( $postid ){
+function wpv_edit_post_action( $postid, $comment = false ){
     if( ! $postid ){
         // I don't know why this would be empty, but it sometimes is
         return;
@@ -180,6 +202,10 @@ function wpv_edit_post_action( $postid ){
         trigger_error('Failed to get permalink path from post with id '.var_export($postid,1), E_USER_NOTICE);
         return;
     }
+    // only purge sub pages, feed and taxomonies when it is not a comment
+    if( $comment ){
+        return;
+    }
     // always purge all feeds
     $wpv_to_purge['^/feed'] = true;
     // the actual post page, and any extensions thereof
@@ -187,8 +213,13 @@ function wpv_edit_post_action( $postid ){
     // to purge all archives and index pages we will purge all sub paths absolutely
     $bits = preg_split( '!/!', $uri, -1, PREG_SPLIT_NO_EMPTY );
     while( array_pop($bits) ){
-        $path = '^/'.implode('/',$bits).'/?$';
-        $wpv_to_purge[$path] = true;
+        $path = implode('/',$bits);
+        // rebuild the post page
+        $patt = $path ? '^/'.$path.'/?$' : '^/$';
+        $wpv_to_purge[$patt] = true;
+        // rebuild all the paginated pages
+        $patt = $path ? '^/'.$path.'/page/.*' : '^/page/.*';
+        $wpv_to_purge[$patt] = true;
     }
     // purge pop up comments?
     // '\\?comments_popup='.$postid; // <- untested
@@ -221,7 +252,7 @@ function wpv_edit_comment_action( $commentid ){
         return;
     }
     // purge post that comment is on
-    wpv_edit_post_action( $post_id );
+    wpv_edit_post_action( $post_id, true );
     global $wpv_to_purge;
     $wpv_to_purge['^/comments/feed'] = true;
 }
@@ -243,7 +274,7 @@ function wpv_purge_on_shutdown(){
 
 if( get_option('wpv_enabled') ){
     // invoke purge actions when posts and comments are edited
-    add_action( 'edit_post',         'wpv_edit_post_action',    99, 1 );
+    add_action( 'publish_post',      'wpv_edit_post_action',    99, 1 );
     add_action( 'deleted_post',      'wpv_edit_post_action',    99, 1 );
     add_action( 'comment_post',      'wpv_edit_comment_action', 99, 1 );
     add_action( 'edit_comment',      'wpv_edit_comment_action', 99, 1 );
