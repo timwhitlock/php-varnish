@@ -42,28 +42,34 @@
 class VarnishAdminSocket {
     
     /**
+     * Socket pointer
      * @var resource
      */
     private $fp;
     
     /**
-     * @param string host name varnishadm is listening on
+     * Host on which varnishadm is listening
+     * @var string
      */
     private $host;
     
     /**
-     * @param string port varnishadm is listening on
+     * Port on which varnishadm is listening, usually 6082
+     * @var string port
      */
     private $port;
     
     /**
-     * @param string secret to use in authentication challenge
+     * Secret to use in authentication challenge.
+     * @param string 
      */
     private $secret;
     
     
     /**
      * Constructor
+     * @param string host
+     * @param int port
      */
     public function __construct( $host = '127.0.0.1', $port = 6082 ){
         $this->host = $host;
@@ -72,7 +78,10 @@ class VarnishAdminSocket {
     
     
     /**
-     * Set authentication secret
+     * Set authentication secret.
+     * Warning: may require a trailing newline if passed to varnishadm from a text file
+     * @param string
+     * @return void
      */
     public function set_auth( $secret ){
         $this->secret = $secret;
