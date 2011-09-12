@@ -89,6 +89,7 @@ function wpv_postdata( $raw, $pair_sep = '&', $arg_sep = '=' ){
 
 /**
  * parse client options saved as raw text
+ * @return array [ [ host, port, vers ], ... ]
  */
 function wpv_get_clients( $raw = null ){
     if( is_null($raw) ){
@@ -98,8 +99,11 @@ function wpv_get_clients( $raw = null ){
         return;
     }
     $clients = array();
-    foreach( preg_split('/[^a-z0-9\.\:\-]+/i', trim($raw), -1, PREG_SPLIT_NO_EMPTY ) as $line ){
-        $clients[] = explode(':', $line, 2 );
+    foreach( preg_split('/[^a-z0-9\.\:\- ]+/i', trim($raw), -1, PREG_SPLIT_NO_EMPTY ) as $line ){
+        $client = preg_split('/[^a-z0-9\.]/i', $line, 3, PREG_SPLIT_NO_EMPTY );
+        empty($client[1]) and $client[1] = '6082';
+        empty($client[2]) and $client[2] = '2.1';
+        $clients[] = $client;
     }
     return $clients;
 }
@@ -128,14 +132,14 @@ function wpv_get_secrets( $raw = null ){
  * instantiate an admin socket
  * @return VarnishAdminSocket
  */
-function wpv_admin_socket( $host, $post ){
+function wpv_admin_socket( $host, $post, $vers ){
     if( ! class_exists('VarnishAdminSocket') ){
         include dirname(__FILE__).'/VarnishAdminSocket.php';
         if( ! class_exists('VarnishAdminSocket') ){
             throw new Exception('Failed to include VarnishAdminSocket class');
         }
     }
-    return new VarnishAdminSocket( $host, $post );
+    return new VarnishAdminSocket( $host, $post, $vers );
 }
 
 
@@ -153,8 +157,8 @@ function wpv_purge_urls( array $urls ){
     // iterate over all available sockets
     foreach( $clients as $i => $client ){
         try {
-            list( $host, $port ) = $client;
-            $Sock = wpv_admin_socket( $host, $port );
+            list( $host, $port, $vers ) = $client;
+            $Sock = wpv_admin_socket( $host, $port, $vers );
             if( ! empty($secrets[$i]) ){
                 $Sock->set_auth( $secrets[$i] );
             }
@@ -274,6 +278,7 @@ function wpv_purge_on_shutdown(){
 
 if( get_option('wpv_enabled') ){
     // invoke purge actions when posts and comments are edited
+    add_action( 'publish_page',      'wpv_edit_post_action',    99, 1 );
     add_action( 'publish_post',      'wpv_edit_post_action',    99, 1 );
     add_action( 'deleted_post',      'wpv_edit_post_action',    99, 1 );
     add_action( 'comment_post',      'wpv_edit_comment_action', 99, 1 );

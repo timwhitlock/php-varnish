@@ -23,14 +23,16 @@ if( isset($postdata['wpv_save']) ){
 // perform manual purge
 else if( isset($postdata['wpv_purge']) ){
     $purge = $postdata['wpv_purge_pattern'];
-    $purgesecret = $postdata['wpv_secret'];
     $timeout = $postdata['wpv_timeout'] or $timeout = 3;
-    foreach( wpv_get_clients() as $client ){
-        list( $host, $port ) = $client;
+    $secrets = wpv_get_secrets();
+    foreach( wpv_get_clients() as $i => $client ){
+        list( $host, $port, $vers ) = $client;
         try {
-            $Sock = wpv_admin_socket( $host, $port );
-            $Sock->set_auth( rawurldecode($purgesecret) );
-            @$Sock->connect( $timeout );
+            $Sock = wpv_admin_socket( $host, $port, $vers );
+            if( ! empty($secrets[$i]) ){
+                $Sock->set_auth( $secrets[$i] );
+            }
+            $Sock->connect( $timeout );
             $Sock->purge( $purge );
             $purges[$host.':'.$port] = 'Purged';
         }
@@ -46,9 +48,9 @@ else if( isset($postdata['wpv_ping']) ){
     $pingsecret = $postdata['wpv_secret'];
     $timeout = $postdata['wpv_timeout'] or $timeout = 3;
     foreach( wpv_get_clients($pingclients) as $client ){
-        list( $host, $port ) = $client;
+        list( $host, $port, $vers ) = $client;
         try {
-            $Sock = wpv_admin_socket( $host, $port );
+            $Sock = wpv_admin_socket( $host, $port, $vers );
             $Sock->set_auth( rawurldecode($pingsecret) );
             @$Sock->connect( $timeout );
             $ping[$host.':'.$port] = $Sock->status() ? 'Running :)' : 'Stopped, but responding';
@@ -61,7 +63,7 @@ else if( isset($postdata['wpv_ping']) ){
 
 // get current raw clients string setting
 $enabled = get_option('wpv_enabled');
-$clients = get_option('wpv_clients', '127.0.0.1:6082');
+$clients = get_option('wpv_clients', '127.0.0.1:6082 2.1');
 $secrets = get_option('wpv_secrets', '');
 
 // get current hostpattern setting
@@ -96,11 +98,11 @@ isset($purge) or $purge = 'req.url ~ "^/$"'.($hostpattern ? ' && req.http.host ~
     		</fieldset>
             <br />
             <fieldset style=" display:block; float:left; width:15%">
-                <label for="f_wpv_clients">Specify Varnish clients (<em>host:port</em>) </label> <br />
+                <label for="f_wpv_clients">Varnish clients <small>(host:port&nbsp;version)</small> </label> <br />
                 <textarea name="wpv_clients" id="f_wpv_clients" rows="3" cols="30" wrap="off"><?php echo esc_html($clients)?></textarea>
             </fieldset>
             <fieldset style=" display:block; float:left; width:60%">
-                <label for="f_wpv_clients">Specify authentication secrets (<em>url encoded</em>)</label> <br />
+                <label for="f_wpv_clients">Authentication secrets <small>(url encoded)</small></label> <br />
                 <textarea name="wpv_secrets" id="f_wpv_secrets" rows="3" cols="60" wrap="off"><?php echo esc_html($secrets)?></textarea>
             </fieldset>
     		<fieldset style="display:block; clear:both">
