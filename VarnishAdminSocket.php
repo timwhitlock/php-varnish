@@ -4,11 +4,11 @@
  * @see http://varnish-cache.org/wiki/CLI
  * @author Tim Whitlock http://twitter.com/timwhitlock
  * 
- * @todo authentication
  * @todo add all short cut methods to commands listed below
  * @todo sanitise command parameters, such as regexp
  * 
  * Tested with varnish-2.1.3 SVN 5049:5055; 
+ *             varnish-2.1.5 SVN 0843d7a
  * CLI commands available as follows:
     help [command]
     ping [timestamp]
@@ -61,19 +61,45 @@ class VarnishAdminSocket {
     
     /**
      * Secret to use in authentication challenge.
-     * @param string 
+     * @var string 
      */
     private $secret;
+    
+    /**
+     * Major version of Varnish top which you're connecting; 2 or 3
+     * @var int
+     */
+    private $version;
+    
+    /**
+     * Minor version of Varnish top which you're connecting
+     * @var int
+     */
+    private $version_minor;
     
     
     /**
      * Constructor
      * @param string host
      * @param int port
+     * @param string optional version, defaults to 2.1
      */
-    public function __construct( $host = '127.0.0.1', $port = 6082 ){
+    public function __construct( $host = '127.0.0.1', $port = 6082, $v = '2.1' ){
         $this->host = $host;
         $this->port = $port;
+        // parse expected version number
+        $vers = explode('.',$v,3);
+        $this->version = isset($vers[0]) ? (int) $vers[0] : 2;
+        $this->version_minor = isset($vers[1]) ? (int) $vers[1] : 1;
+        if( 2 === $this->version ){
+            // @todo sanity check 2.x number
+        }
+        else if( 3 === $this->version ){
+            // @todo sanity check 3.x number
+        }
+        else {
+            throw new Exception('Only versions 2 and 3 of Varnish are supported');
+        }
     }
     
     
@@ -226,7 +252,8 @@ class VarnishAdminSocket {
      * @return string
      */
     public function purge( $expr ){
-        return $this->command( 'purge '.$expr, $code );
+        $ban = $this->version === 3 ? 'ban' : 'purge';
+        return $this->command( $ban.' '.$expr, $code );
     }
     
     
@@ -238,7 +265,8 @@ class VarnishAdminSocket {
      * @return string
      */
     public function purge_url( $expr ){
-        return $this->command( 'purge.url '.$expr, $code );
+        $ban = $this->version === 3 ? 'ban' : 'purge';
+        return $this->command( $ban.'.url '.$expr, $code );
     }    
     
     
@@ -249,7 +277,8 @@ class VarnishAdminSocket {
      * @return array
      */
     public function purge_list(){
-        $response = $this->command( 'purge.list', $code );
+        $ban = $this->version === 3 ? 'ban' : 'purge';
+        $response = $this->command( $ban.'.list', $code );
         return explode( "\n",trim($response) );
     }
     

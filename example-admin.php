@@ -16,8 +16,8 @@ error_reporting( E_ALL | E_STRICT );
 require 'VarnishAdminSocket.php';
 
 
-// open socket connection with your known host and port
-$Sock = new VarnishAdminSocket( 'localhost', 6082 );
+// open socket connection with your known host, port and version
+$Sock = new VarnishAdminSocket( 'localhost', 6082, '3.0.1' );
 // secret text from file probably has a trailing newline
 $Sock->set_auth("extremelysecrettext\n");
 // connect to socket with a timeout parameter
