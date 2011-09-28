@@ -40,7 +40,7 @@
  * varnishadm connection class
  */
 class VarnishAdminSocket {
-    
+    private $ban;
     /**
      * Socket pointer
      * @var resource
@@ -100,6 +100,7 @@ class VarnishAdminSocket {
         else {
             throw new Exception('Only versions 2 and 3 of Varnish are supported');
         }
+        $this->ban = $this->version === 3 ? 'ban' : 'purge';
     }
     
     
@@ -129,15 +130,15 @@ class VarnishAdminSocket {
         stream_set_blocking( $this->fp, 1 );
         stream_set_timeout( $this->fp, $timeout );
         // connecting should give us the varnishadm banner with a 200 code, or 107 for auth challenge
-        $banner = $this->read( $code );
+        $this->banner = $this->read( $code );
         if( $code === 107 ){
             if( ! $this->secret ){
                 throw new Exception('Authentication required; see VarnishAdminSocket::set_auth');
             }
             try {
-                $challenge = substr( $banner, 0, 32 );
+                $challenge = substr( $this->banner, 0, 32 );
                 $response = hash('sha256', $challenge."\n".$this->secret.$challenge."\n");
-                $banner = $this->command('auth '.$response, $code, 200 );
+                $this->banner = $this->command('auth '.$response, $code, 200 );
             }
             catch( Exception $Ex ){
                 throw new Exception('Authentication failed');
@@ -146,7 +147,7 @@ class VarnishAdminSocket {
         if( $code !== 200 ){
             throw new Exception( sprintf('Bad response from varnishadm on %s:%s', $this->host, $this->port));
         }
-        return $banner;
+        return $this->banner;
     }
     
     
@@ -252,8 +253,7 @@ class VarnishAdminSocket {
      * @return string
      */
     public function purge( $expr ){
-        $ban = $this->version === 3 ? 'ban' : 'purge';
-        return $this->command( $ban.' '.$expr, $code );
+        return $this->command( $this->ban.' '.$expr, $code );
     }
     
     
@@ -265,8 +265,7 @@ class VarnishAdminSocket {
      * @return string
      */
     public function purge_url( $expr ){
-        $ban = $this->version === 3 ? 'ban' : 'purge';
-        return $this->command( $ban.'.url '.$expr, $code );
+        return $this->command( $this->ban.'.url '.$expr, $code );
     }    
     
     
@@ -277,8 +276,7 @@ class VarnishAdminSocket {
      * @return array
      */
     public function purge_list(){
-        $ban = $this->version === 3 ? 'ban' : 'purge';
-        $response = $this->command( $ban.'.list', $code );
+        $response = $this->command( $this->ban.'.list', $code );
         return explode( "\n",trim($response) );
     }
     
