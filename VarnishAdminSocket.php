@@ -76,7 +76,11 @@ class VarnishAdminSocket {
      * @var int
      */
     private $version_minor;
-    
+    /**
+     * Either ban or purge based on the version of Varnish top
+     * @var string
+     */
+    private $ban = '';
     
     /**
      * Constructor
@@ -100,6 +104,7 @@ class VarnishAdminSocket {
         else {
             throw new Exception('Only versions 2 and 3 of Varnish are supported');
         }
+        $this->ban = $this->version === 3 ? 'ban' : 'purge';
     }
     
     
@@ -252,8 +257,8 @@ class VarnishAdminSocket {
      * @return string
      */
     public function purge( $expr ){
-        $ban = $this->version === 3 ? 'ban' : 'purge';
-        return $this->command( $ban.' '.$expr, $code );
+
+        return $this->command( $this->ban.' '.$expr, $code );
     }
     
     
@@ -265,8 +270,8 @@ class VarnishAdminSocket {
      * @return string
      */
     public function purge_url( $expr ){
-        $ban = $this->version === 3 ? 'ban' : 'purge';
-        return $this->command( $ban.'.url '.$expr, $code );
+
+        return $this->command( $this->ban.'.url '.$expr, $code );
     }    
     
     
@@ -277,8 +282,8 @@ class VarnishAdminSocket {
      * @return array
      */
     public function purge_list(){
-        $ban = $this->version === 3 ? 'ban' : 'purge';
-        $response = $this->command( $ban.'.list', $code );
+
+        $response = $this->command( $this->ban.'.list', $code );
         return explode( "\n",trim($response) );
     }
     
