@@ -1,3 +1,4 @@
+
 <?php
 /**
  * Varnish admin socket for executing varnishadm CLI commands.
@@ -189,7 +190,7 @@ class VarnishAdminSocket {
      * @return string
      */
     private function read( &$code ){
-        $code = 0;
+        $code = null;
         // get bytes until we have either a response code and message length or an end of file
         // code should be on first line, so we should get it in one chunk
         while ( ! feof($this->fp) ) {
@@ -206,7 +207,7 @@ class VarnishAdminSocket {
                 break;
             }
         }
-        if( ! isset($code) ){
+        if( is_null($code) ){
             throw new Exception('Failed to get numeric code in response');
         }
         $response = '';
