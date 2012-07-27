@@ -196,24 +196,24 @@ function wpv_purge_urls( array $urls ){
  * Collect URLs to purge relating to a post
  */
 function wpv_edit_post_action( $postid, $comment = false ){
-    if( ! $postid ){
-        // I don't know why this would be empty, but it sometimes is
-        return;
-    }
+
     global $wpv_to_purge;
     $uri = parse_url( get_permalink($postid), PHP_URL_PATH );
     if( ! $uri ){
         trigger_error('Failed to get permalink path from post with id '.var_export($postid,1), E_USER_NOTICE);
         return;
     }
-    // only purge sub pages, feed and taxomonies when it is not a comment
+
+    // the actual post page, and any extensions thereof
+    $wpv_to_purge['^'.$uri.'?'] = true;
+
+    // only purge feed and taxonomies when it is not a comment
     if( $comment ){
         return;
     }
     // always purge all feeds
     $wpv_to_purge['^/feed'] = true;
-    // the actual post page, and any extensions thereof
-    $wpv_to_purge['^'.$uri.'?'] = true;
+
     // to purge all archives and index pages we will purge all sub paths absolutely
     $bits = preg_split( '!/!', $uri, -1, PREG_SPLIT_NO_EMPTY );
     while( array_pop($bits) ){
@@ -256,7 +256,7 @@ function wpv_edit_comment_action( $commentid ){
         return;
     }
     // purge post that comment is on
-    wpv_edit_post_action( $post_id, true );
+    wpv_edit_post_action( $postid, true );
     global $wpv_to_purge;
     $wpv_to_purge['^/comments/feed'] = true;
 }
@@ -286,7 +286,7 @@ if( get_option('wpv_enabled') ){
     add_action( 'trashed_comment',   'wpv_edit_comment_action', 99, 1 );
     add_action( 'untrashed_comment', 'wpv_edit_comment_action', 99, 1 );
     add_action( 'deleted_comment',   'wpv_edit_comment_action', 99, 1 );
-    
+
     // hold all URLs in a global and purge on shutdown - this is designed to avoid duplicate purges.
     // yes, I know globals are nasty, but this is Wordpress we're dealing with here.
     $GLOBALS['wpv_to_purge'] = array();
