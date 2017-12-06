@@ -103,10 +103,16 @@ class VarnishAdminSocket {
         else if( 3 === $this->version ){
             // @todo sanity check 3.x number
         }
-        else {
-            throw new Exception('Only versions 2 and 3 of Varnish are supported');
+        else if( 4 === $this->version ){
+            // @todo sanity check 4.x number
         }
-        $this->ban = $this->version === 3 ? 'ban' : 'purge';
+        else if( 5 === $this->version ){
+            // @todo sanity check 5.x number
+        }
+        else {
+            throw new Exception('Only Varnish versions from 2 to 5 are supported');
+        }
+        $this->ban = in_array($this->version,[3,4,5]) ? 'ban' : 'purge';
     }
     
     
