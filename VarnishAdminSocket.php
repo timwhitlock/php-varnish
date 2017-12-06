@@ -277,8 +277,15 @@ class VarnishAdminSocket {
      * @return string
      */
     public function purge_url( $expr ){
-        return $this->command( $this->ban.'.url '.$expr, $code );
-    }    
+        $domain = parse_url($expr, PHP_URL_HOST);
+        $path = parse_url($expr, PHP_URL_PATH);
+
+        if ($this->version <= 3) {
+            return $this->command( $this->ban.'.url '.$domain.$path, $code );
+        } else {
+            return $this->command( $this->ban . ' req.http.host == ' . $domain . ' && req.url ~ ' . $path . '/.*', $code );
+        }
+    }
     
     
     
