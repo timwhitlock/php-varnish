@@ -1,6 +1,8 @@
-# php-varnish
+# NO LONGER MAINTAINED
 
-PHP tools for working with Varnish reverse proxy cache.
+---
+
+## PHP tools for working with Varnish reverse proxy cache.
 
 * Authors: [Tim Whitlock](http://twitter.com/timwhitlock)
 * See [varnish-cache.org](http://varnish-cache.org/) for information about Varnish
